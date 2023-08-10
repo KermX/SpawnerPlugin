@@ -26,6 +26,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class SpawnerPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
+    //this part is done and shouldn't need to be changed at all
     public void onPlayerInteractSpawner(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
             return;
@@ -47,6 +48,8 @@ public final class SpawnerPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
+    // I was having trouble getting the correct spawner type to drop or working out a system to set up the
+    //item meta so the type can be set correctly on placement
     public void onPlayerBreakSpawner(BlockBreakEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
@@ -61,12 +64,15 @@ public final class SpawnerPlugin extends JavaPlugin implements Listener {
             if (!inWilderness && entityType == null){
                 player.sendMessage("drop empty spawner");
             } else {
+                // spawner shards are an itemsadder item, could do this part with the itemsadder api if you want or
+                //drop paper with custom model data 10532 and lore :craftingingedientlabel:
                 player.sendMessage("drop a spawner fragment");
             }
         }
     }
 
     @EventHandler
+    //set correct spawner type on placement (if necessary)
     public void onPlayerPlaceSpawner(BlockPlaceEvent event){
         if (event.getBlock().getType() == Material.SPAWNER){
             ItemStack itemStack = event.getItemInHand();
