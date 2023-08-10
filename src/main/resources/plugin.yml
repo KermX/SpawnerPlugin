@@ -1,0 +1,6 @@
+name: SpawnerPlugin
+version: '${project.version}'
+main: me.kermx.SpawnerPlugin
+api-version: 1.20
+depend:
+  - Towny
