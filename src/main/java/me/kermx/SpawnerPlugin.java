@@ -5,6 +5,7 @@ import dev.lone.itemsadder.api.CustomStack;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.block.CreatureSpawner;
 import org.bukkit.enchantments.Enchantment;
@@ -14,9 +15,13 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 
 
@@ -58,14 +63,25 @@ public final class SpawnerPlugin extends JavaPlugin implements Listener {
             // player is in a town AND it is not an empty spawner
             // give player a spawner of the same type that they broke
             if (!inWilderness && entityType != null) {
+
                 ItemStack spawnerSameType = new ItemStack(Material.SPAWNER);
                 BlockStateMeta blockStateMeta = (BlockStateMeta) spawnerSameType.getItemMeta();
                 CreatureSpawner creatureSpawnerDrop = (CreatureSpawner) blockStateMeta.getBlockState();
-                creatureSpawnerDrop.setSpawnedType(creatureSpawner.getSpawnedType());
+
+                creatureSpawnerDrop.setSpawnedType(entityType);
                 blockStateMeta.setBlockState(creatureSpawnerDrop);
+
+                NamespacedKey key = new NamespacedKey(this, "spawnerEntityType");
+                PersistentDataContainer persistentDataContainer = blockStateMeta.getPersistentDataContainer();
+                persistentDataContainer.set(key, PersistentDataType.STRING, entityType.name());
+
                 spawnerSameType.setItemMeta(blockStateMeta);
-                //add to player inv
+
                 player.getInventory().addItem(spawnerSameType);
+
+                //debug msg
+                player.sendMessage("broke " + key + ": " + persistentDataContainer + "block state meta: " + blockStateMeta);
+
             }
             // player is in a town AND the spawner is empty
             // give player an empty spawner
@@ -87,12 +103,35 @@ public final class SpawnerPlugin extends JavaPlugin implements Listener {
                     ItemStack customItemStack = stack.getItemStack();
                     player.getInventory().addItem(customItemStack);
                 }else{
-                    player.sendMessage(ChatColor.DARK_RED + "Error, Contact Kerm!!!");
+                    player.sendMessage(ChatColor.DARK_RED + "Error, Make a Ticket!!!");
                 }
             }
         }
     }
-@Override
+
+    @EventHandler
+    public void onPlayerPlaceSpawner(BlockPlaceEvent event){
+        Block block = event.getBlock();
+        Player player = event.getPlayer();
+        if (block.getType() == Material.SPAWNER){
+            CreatureSpawner placedCreatureSpawner = (CreatureSpawner) block.getState();
+            PersistentDataContainer persistentDataContainer = placedCreatureSpawner.getPersistentDataContainer();
+            NamespacedKey key = new NamespacedKey(this, "spawnerEntityType");
+            if (persistentDataContainer.has(key, PersistentDataType.STRING)){
+                String spawnerType = persistentDataContainer.get(key, PersistentDataType.STRING);
+                EntityType entityType = EntityType.valueOf(spawnerType);
+                placedCreatureSpawner.setSpawnedType(entityType);
+                placedCreatureSpawner.update();
+
+                //debug msg
+                player.sendMessage("Placed " + key + ": " + persistentDataContainer + "entity type: " + entityType);
+            }
+        }
+    }
+
+
+
+    @Override
     public void onEnable() {
         getServer().getPluginManager().registerEvents(this,this);
         Bukkit.getLogger().info("Silly lil spawner plugin started");
