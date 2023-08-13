@@ -1,10 +1,10 @@
 package me.kermx;
 
 import com.palmergames.bukkit.towny.TownyAPI;
+import dev.lone.itemsadder.api.CustomStack;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.block.CreatureSpawner;
 import org.bukkit.enchantments.Enchantment;
@@ -14,12 +14,9 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 
@@ -58,29 +55,42 @@ public final class SpawnerPlugin extends JavaPlugin implements Listener {
             boolean inWilderness = TownyAPI.getInstance().isWilderness(player.getLocation());
             CreatureSpawner creatureSpawner = (CreatureSpawner) block.getState();
             EntityType entityType = creatureSpawner.getSpawnedType();
+            // player is in a town AND it is not an empty spawner
+            // give player a spawner of the same type that they broke
             if (!inWilderness && entityType != null) {
                 player.sendMessage("drop correct spawner type");
+                ItemStack spawnerSameType = new ItemStack(Material.SPAWNER);
+                BlockStateMeta blockStateMeta = (BlockStateMeta) spawnerSameType.getItemMeta();
+                CreatureSpawner creatureSpawnerDrop = (CreatureSpawner) blockStateMeta.getBlockState();
+                creatureSpawnerDrop.setSpawnedType(creatureSpawner.getSpawnedType());
+                blockStateMeta.setBlockState(creatureSpawnerDrop);
+                spawnerSameType.setItemMeta(blockStateMeta);
+                //add to player inv
+                player.getInventory().addItem(spawnerSameType);
             }
+            // player is in a town AND the spawner is empty
+            // give player an empty spawner
             if (!inWilderness && entityType == null){
                 player.sendMessage("drop empty spawner");
-            } else {
-                // spawner shards are an itemsadder item, could do this part with the itemsadder api if you want or
-                //drop paper with custom model data 10532 and lore :craftingingedientlabel:
-                player.sendMessage("drop a spawner fragment");
+                ItemStack emptySpawner = new ItemStack(Material.SPAWNER);
+                player.getInventory().addItem(emptySpawner);
             }
-        }
-    }
-
-    @EventHandler
-    //set correct spawner type on placement (if necessary)
-    public void onPlayerPlaceSpawner(BlockPlaceEvent event){
-        if (event.getBlock().getType() == Material.SPAWNER){
-            ItemStack itemStack = event.getItemInHand();
-            ItemMeta itemMeta = itemStack.getItemMeta();
-            Player player = event.getPlayer();
-            PersistentDataContainer persistentDataContainer = itemMeta.getPersistentDataContainer();
-            if (persistentDataContainer.has(new NamespacedKey(this, "entityType"), PersistentDataType.STRING)){
-                player.sendMessage("place correct spawner type? unsure if this is needed");
+            // player is in wilderness AND is not sneaking
+            // cancel event and tell the player to try again while crouching
+            if (inWilderness && !player.isSneaking()) {
+                event.setCancelled(true);
+                player.sendMessage(ChatColor.RED + "Crouch and break the spawner again to receive a spawner fragment!");
+            }
+            // player is in wilder AND is sneaking
+            // drop itemsadder item
+            if (inWilderness && player.isSneaking()){
+                CustomStack stack = CustomStack.getInstance("crafting_ingredients:spawner_shard");
+                if (stack != null){
+                    ItemStack customItemStack = stack.getItemStack();
+                    player.getInventory().addItem(customItemStack);
+                }else{
+                    player.sendMessage(ChatColor.DARK_RED + "Error, Contact Kerm!!!");
+                }
             }
         }
     }
