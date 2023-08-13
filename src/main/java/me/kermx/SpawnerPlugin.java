@@ -50,8 +50,6 @@ public final class SpawnerPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
-    // I was having trouble getting the correct spawner type to drop or working out a system to set up the
-    //item meta so the type can be set correctly on placement
     public void onPlayerBreakSpawner(BlockBreakEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
