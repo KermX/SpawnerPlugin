@@ -58,7 +58,6 @@ public final class SpawnerPlugin extends JavaPlugin implements Listener {
             // player is in a town AND it is not an empty spawner
             // give player a spawner of the same type that they broke
             if (!inWilderness && entityType != null) {
-                player.sendMessage("drop correct spawner type");
                 ItemStack spawnerSameType = new ItemStack(Material.SPAWNER);
                 BlockStateMeta blockStateMeta = (BlockStateMeta) spawnerSameType.getItemMeta();
                 CreatureSpawner creatureSpawnerDrop = (CreatureSpawner) blockStateMeta.getBlockState();
@@ -71,7 +70,6 @@ public final class SpawnerPlugin extends JavaPlugin implements Listener {
             // player is in a town AND the spawner is empty
             // give player an empty spawner
             if (!inWilderness && entityType == null){
-                player.sendMessage("drop empty spawner");
                 ItemStack emptySpawner = new ItemStack(Material.SPAWNER);
                 player.getInventory().addItem(emptySpawner);
             }
