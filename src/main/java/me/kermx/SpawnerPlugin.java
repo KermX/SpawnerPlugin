@@ -17,6 +17,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -24,8 +25,12 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Arrays;
+
 
 public final class SpawnerPlugin extends JavaPlugin implements Listener {
+    //KEY
+    NamespacedKey key = new NamespacedKey(this, "spawnerEntityType");
 
     @EventHandler
     //this part is done and shouldn't need to be changed at all
@@ -39,7 +44,7 @@ public final class SpawnerPlugin extends JavaPlugin implements Listener {
             return;
         }
 
-        if (block.getType() == Material.SPAWNER) {
+        if (block.getType() == Material.SPAWNER && event.getPlayer().getInventory().getItemInMainHand().toString().contains("_SPAWN_EGG") ) {
             CreatureSpawner creatureSpawner = (CreatureSpawner) block.getState();
             if (creatureSpawner.getSpawnedType() != null) {
                 event.setCancelled(true);
@@ -49,36 +54,41 @@ public final class SpawnerPlugin extends JavaPlugin implements Listener {
         }
     }
 
+
     @EventHandler
     public void onPlayerBreakSpawner(BlockBreakEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
         ItemStack itemStack = event.getPlayer().getInventory().getItemInMainHand();
-        if (block.getType() == Material.SPAWNER && itemStack.containsEnchantment(Enchantment.SILK_TOUCH) && !event.isCancelled()) {
+        if (block.getType() == Material.SPAWNER && itemStack.containsEnchantment(Enchantment.SILK_TOUCH) && !event.isCancelled() && player.hasPermission("spawnerplugin.use")) {
             boolean inWilderness = TownyAPI.getInstance().isWilderness(player.getLocation());
-            CreatureSpawner creatureSpawner = (CreatureSpawner) block.getState();
-            EntityType entityType = creatureSpawner.getSpawnedType();
+            EntityType entityType = ((CreatureSpawner) block.getState()).getSpawnedType();
             // player is in a town AND it is not an empty spawner
             // give player a spawner of the same type that they broke
+            if (player.getInventory().firstEmpty() == -1){
+                event.setCancelled(true);
+                player.sendMessage(ChatColor.RED + "Empty a space in your inventory to break a spawner!");
+            }
+
             if (!inWilderness && entityType != null) {
 
                 ItemStack spawnerSameType = new ItemStack(Material.SPAWNER);
-                BlockStateMeta blockStateMeta = (BlockStateMeta) spawnerSameType.getItemMeta();
-                CreatureSpawner creatureSpawnerDrop = (CreatureSpawner) blockStateMeta.getBlockState();
+                ItemMeta itemMeta = spawnerSameType.getItemMeta();
 
-                creatureSpawnerDrop.setSpawnedType(entityType);
-                blockStateMeta.setBlockState(creatureSpawnerDrop);
+                itemMeta.setDisplayName(ChatColor.GOLD + entityType.name() + ChatColor.WHITE + " Spawner");
+                itemMeta.setLore(Arrays.asList("", ChatColor.GRAY + "Cannot be Changed With Spawn Egg"));
+                itemMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+                itemMeta.getPersistentDataContainer().set(key, PersistentDataType.STRING, entityType.name());
 
-                NamespacedKey key = new NamespacedKey(this, "spawnerEntityType");
-                PersistentDataContainer persistentDataContainer = blockStateMeta.getPersistentDataContainer();
-                persistentDataContainer.set(key, PersistentDataType.STRING, entityType.name());
+                BlockStateMeta blockStateMeta = (BlockStateMeta) itemMeta;
+                CreatureSpawner creatureSpawner = (CreatureSpawner) blockStateMeta.getBlockState();
+                creatureSpawner.setSpawnedType(entityType);
+                blockStateMeta.setBlockState(creatureSpawner);
 
-                spawnerSameType.setItemMeta(blockStateMeta);
+                spawnerSameType.setItemMeta(itemMeta);
 
                 player.getInventory().addItem(spawnerSameType);
-
-                //debug msg
-                player.sendMessage("broke " + key + ": " + persistentDataContainer + "block state meta: " + blockStateMeta);
+                event.setExpToDrop(0);
 
             }
             // player is in a town AND the spawner is empty
@@ -86,6 +96,7 @@ public final class SpawnerPlugin extends JavaPlugin implements Listener {
             if (!inWilderness && entityType == null){
                 ItemStack emptySpawner = new ItemStack(Material.SPAWNER);
                 player.getInventory().addItem(emptySpawner);
+                event.setExpToDrop(0);
             }
             // player is in wilderness AND is not sneaking
             // cancel event and tell the player to try again while crouching
@@ -110,19 +121,15 @@ public final class SpawnerPlugin extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerPlaceSpawner(BlockPlaceEvent event){
         Block block = event.getBlock();
-        Player player = event.getPlayer();
-        if (block.getType() == Material.SPAWNER){
-            CreatureSpawner placedCreatureSpawner = (CreatureSpawner) block.getState();
-            PersistentDataContainer persistentDataContainer = placedCreatureSpawner.getPersistentDataContainer();
-            NamespacedKey key = new NamespacedKey(this, "spawnerEntityType");
-            if (persistentDataContainer.has(key, PersistentDataType.STRING)){
-                String spawnerType = persistentDataContainer.get(key, PersistentDataType.STRING);
-                EntityType entityType = EntityType.valueOf(spawnerType);
-                placedCreatureSpawner.setSpawnedType(entityType);
-                placedCreatureSpawner.update();
+        if (block.getType() == Material.SPAWNER && event.getItemInHand().getItemMeta() != null){
+            PersistentDataContainer placedSpawnerSameType = event.getItemInHand().getItemMeta().getPersistentDataContainer();
+            if (placedSpawnerSameType.has(key, PersistentDataType.STRING)){
+                String persistentSpawnedType = placedSpawnerSameType.get(key, PersistentDataType.STRING);
 
-                //debug msg
-                player.sendMessage("Placed " + key + ": " + persistentDataContainer + "entity type: " + entityType);
+                //change spawner type and update the spawner
+                CreatureSpawner creatureSpawner = (CreatureSpawner) block.getState();
+                creatureSpawner.setSpawnedType(EntityType.valueOf(persistentSpawnedType));
+                creatureSpawner.update();
             }
         }
     }
