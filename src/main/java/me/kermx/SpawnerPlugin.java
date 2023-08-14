@@ -61,58 +61,63 @@ public final class SpawnerPlugin extends JavaPlugin implements Listener {
         Player player = event.getPlayer();
         ItemStack itemStack = event.getPlayer().getInventory().getItemInMainHand();
         if (block.getType() == Material.SPAWNER && itemStack.containsEnchantment(Enchantment.SILK_TOUCH) && !event.isCancelled() && player.hasPermission("spawnerplugin.use")) {
-            boolean inWilderness = TownyAPI.getInstance().isWilderness(player.getLocation());
-            EntityType entityType = ((CreatureSpawner) block.getState()).getSpawnedType();
-            // player is in a town AND it is not an empty spawner
-            // give player a spawner of the same type that they broke
-            if (player.getInventory().firstEmpty() == -1){
+
+            //make sure player have inv space
+            if (player.getInventory().firstEmpty() == -1) {
                 event.setCancelled(true);
                 player.sendMessage(ChatColor.RED + "Empty a space in your inventory to break a spawner!");
             }
+            if (player.getInventory().firstEmpty() != -1) {
+                // player is in a town AND it is not an empty spawner
+                // give player a spawner of the same type that they broke
+                boolean inWilderness = TownyAPI.getInstance().isWilderness(player.getLocation());
+                EntityType entityType = ((CreatureSpawner) block.getState()).getSpawnedType();
 
-            if (!inWilderness && entityType != null) {
+                if (!inWilderness && entityType != null) {
 
-                ItemStack spawnerSameType = new ItemStack(Material.SPAWNER);
-                ItemMeta itemMeta = spawnerSameType.getItemMeta();
+                    ItemStack spawnerSameType = new ItemStack(Material.SPAWNER);
+                    ItemMeta itemMeta = spawnerSameType.getItemMeta();
 
-                itemMeta.setDisplayName(ChatColor.GOLD + entityType.name() + ChatColor.WHITE + " Spawner");
-                itemMeta.setLore(Arrays.asList("", ChatColor.GRAY + "Cannot be Changed With Spawn Egg"));
-                itemMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-                itemMeta.getPersistentDataContainer().set(key, PersistentDataType.STRING, entityType.name());
+                    itemMeta.setDisplayName(ChatColor.GOLD + entityType.name() + ChatColor.WHITE + " Spawner");
+                    itemMeta.setLore(Arrays.asList("", ChatColor.GRAY + "Cannot be Changed With Spawn Egg"));
+                    itemMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+                    itemMeta.getPersistentDataContainer().set(key, PersistentDataType.STRING, entityType.name());
 
-                BlockStateMeta blockStateMeta = (BlockStateMeta) itemMeta;
-                CreatureSpawner creatureSpawner = (CreatureSpawner) blockStateMeta.getBlockState();
-                creatureSpawner.setSpawnedType(entityType);
-                blockStateMeta.setBlockState(creatureSpawner);
+                    BlockStateMeta blockStateMeta = (BlockStateMeta) itemMeta;
+                    CreatureSpawner creatureSpawner = (CreatureSpawner) blockStateMeta.getBlockState();
+                    creatureSpawner.setSpawnedType(entityType);
+                    blockStateMeta.setBlockState(creatureSpawner);
 
-                spawnerSameType.setItemMeta(itemMeta);
+                    spawnerSameType.setItemMeta(itemMeta);
 
-                player.getInventory().addItem(spawnerSameType);
-                event.setExpToDrop(0);
+                    player.getInventory().addItem(spawnerSameType);
+                    event.setExpToDrop(0);
 
-            }
-            // player is in a town AND the spawner is empty
-            // give player an empty spawner
-            if (!inWilderness && entityType == null){
-                ItemStack emptySpawner = new ItemStack(Material.SPAWNER);
-                player.getInventory().addItem(emptySpawner);
-                event.setExpToDrop(0);
-            }
-            // player is in wilderness AND is not sneaking
-            // cancel event and tell the player to try again while crouching
-            if (inWilderness && !player.isSneaking()) {
-                event.setCancelled(true);
-                player.sendMessage(ChatColor.RED + "Crouch and break the spawner again to receive a spawner fragment!");
-            }
-            // player is in wilder AND is sneaking
-            // drop itemsadder item
-            if (inWilderness && player.isSneaking()){
-                CustomStack stack = CustomStack.getInstance("crafting_ingredients:spawner_shard");
-                if (stack != null){
-                    ItemStack customItemStack = stack.getItemStack();
-                    player.getInventory().addItem(customItemStack);
-                }else{
-                    player.sendMessage(ChatColor.DARK_RED + "Error, Make a Ticket!!!");
+                }
+                // player is in a town AND the spawner is empty
+                // give player an empty spawner
+                if (!inWilderness && entityType == null) {
+                    ItemStack emptySpawner = new ItemStack(Material.SPAWNER);
+                    player.getInventory().addItem(emptySpawner);
+                    event.setExpToDrop(0);
+                }
+                // player is in wilderness AND is not sneaking
+                // cancel event and tell the player to try again while crouching
+                if (inWilderness && !player.isSneaking()) {
+                    event.setCancelled(true);
+                    player.sendMessage(ChatColor.RED + "Crouch and break the spawner again to receive a spawner fragment!");
+                }
+                // player is in wilder AND is sneaking
+                // drop itemsadder item
+                if (inWilderness && player.isSneaking()) {
+                    CustomStack stack = CustomStack.getInstance("crafting_ingredients:spawner_shard");
+                    if (stack != null) {
+                        ItemStack customItemStack = stack.getItemStack();
+                        player.getInventory().addItem(customItemStack);
+                    } else {
+                        player.sendMessage(ChatColor.DARK_RED + "Error, Make a Ticket!!!");
+                        player.sendMessage(ChatColor.DARK_RED + "Error Code 1");
+                    }
                 }
             }
         }
