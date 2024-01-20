@@ -107,7 +107,7 @@ public final class SpawnerPlugin extends JavaPlugin implements Listener {
                     event.setCancelled(true);
                     player.sendMessage(ChatColor.RED + "Crouch and break the spawner again to receive a spawner fragment!");
                 }
-                // player is in wilder AND is sneaking
+                // player is in wildernesss AND is sneaking
                 // drop itemsadder item
                 if (inWilderness && player.isSneaking()) {
                     CustomStack stack = CustomStack.getInstance("crafting_ingredients:spawner_shard");
